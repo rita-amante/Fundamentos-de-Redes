@@ -1,0 +1,731 @@
+
+
+_____________________________________ISP______________________________________
+
+-- configurar IPv4
+ISP# configure terminal
+ISP(config)# interface F1/0
+ISP(config-if)# ip address 100.10.10.254 255.255.255.252
+ISP(config-if)# no shutdown
+ISP(config-if)# exit
+ISP(config)# interface F1/1
+ISP(config-if)# ip address 100.0.0.1 255.255.255.0             
+ISP(config-if)# no shutdown
+ISP(config-if)# end
+ISP# write
+ISP# show ip interface brief
+
+-- configurar Rede Internet
+ISP# configure terminal
+ISP(config)# ip route 200.164.177.0 255.255.255.0 100.10.10.253
+ISP(config)# end
+ISP# write
+ISP# show ip route
+  
+-- configurar IPv6
+ISP# configure terminal
+ISP(config)# interface F1/0
+ISP(config-if)# ipv6 address 2777:7:7:7::2/126 
+ISP(config-if)# no shutdown
+ISP(config-if)# exit
+ISP(config)# interface F1/1
+ISP(config-if)# ipv6 3000:A:A:A::1/64           
+ISP(config-if)# no shutdown
+ISP(config-if)# exit
+ISP(config)# ipv6 route 2001:20::/60 2777:7:7:7::1
+ISP(config-if)# end
+ISP# write
+
+___________________________________RouterA____________________________________
+
+-- configurar IPv4
+RouterA# configure terminal
+RouterA(config)# interface F0/1
+RouterA(config-if)# ip address 10.147.7.14 255.255.255.252
+RouterA(config-if)# no shutdown
+RouterA(config-if)# exit
+RouterA(config)# interface F1/0
+RouterA(config-if)# ip address 192.168.0.1 255.255.254.0 
+RouterA(config-if)# no shutdown
+RouterA(config-if)# end
+RouterA# write
+RouterA# show ip interface brief
+
+-- configurar IPv6
+RouterA# configure terminal
+RouterA(config)# interface F0/1
+RouterA(config-if)# ipv6 address 2001:20:0:36::14/126
+RouterA(config-if)# no shutdown
+RouterA(config-if)# end
+RouterA# write
+
+-- configurar DHCP
+RouterA# configure terminal
+RouterA(config)# ip dhcp excluded-address 192.168.0.1 192.168.0.10
+RouterA(config)# ip dhcp excluded-address 192.168.1.250 192.168.1.254
+RouterA(config)# ip dhcp pool 1
+RouterA(dhcp-config)# network 192.168.0.0 255.255.254.0
+RouterA(dhcp-config)# default-router 192.168.0.254
+
+
+______________________________________R1______________________________________
+
+-- configurar IPv4
+R1# configure terminal
+R1(config)# interface F0/0
+R1(config-if)# ip address 10.147.7.2 255.255.255.252
+R1(config-if)# no shutdown
+R1(config-if)# exit
+R1(config)# interface F0/1
+R1(config-if)# ip address 10.147.7.6 255.255.255.252
+R1(config-if)# no shutdown
+R1(config-if)# exit
+R1(config)# interface F1/0
+R1(config-if)# ip address 10.100.10.253 255.255.255.252
+R1(config-if)# no shutdown
+R1(config-if)# end
+R1# write
+R1# show ip interface brief
+
+-- configurar Rede Pública
+R1# configure terminal
+R1(config)# ip route 0.0.0.0 0.0.0.0 100.10.10.254
+R1(config)# end
+R1# write
+R1# show ip route
+
+-- configurar IPv6
+R1# configure terminal
+R1(config)# interface F0/0
+R1(config-if)# ipv6 address 2001:20:0:36::2/126
+R1(config-if)# no shutdown
+R1(config-if)# exit
+R1(config)# interface F0/1
+R1(config-if)# ipv6 address 2001:20:0:36::6/126
+R1(config-if)# no shutdown
+R1(config-if)# exit
+R1(config)# interface F1/0
+R1(config-if)# ipv6 address 2777:7:7:7::1/126 
+R1(config-if)# no shutdown
+R1(config-if)# end
+R1# write
+
+-- configurar RIPv2
+R1# configure terminal
+R1(config)# ip routing
+R1(config)# router rip
+R1(config-router)# version 2
+R1(config-router)# network 0.0.0.0
+R1(config-router)# redistribute static
+R1(config-router)# end
+
+-- configurar RIPng
+R1# configure terminal
+R1(config)# ipv6 unicast-routing
+R1(config)# int F0/0
+R1(config-if-range)# ipv6 rip proc1 enable
+R1(config-if-range)# exit
+R1(config)# ipv6 router rip proc1 
+R1(config-rtr)# redistribute static
+R1(config)# ipv6 route ::/0 2777:7:7:7::2
+R1(config)# do ping 2777:7:7:7::2
+R1(config)# do ping 3000:A:A:A::1
+R1(config)# do show ipv6 route
+
+-- configurar NAT/PAT
+R1# configure terminal
+R1(config)# ip nat pool MYNATPOOL 200.164.177.193 200.164.177.206 netmask 255.255.255.240
+R1(config)# access-list 2 permit 10.0.0.0 0.255.255.255
+R1(config)# access-list 2 permit 192.168.0.0 0.0.255.255
+R1(config)# ip nat inside source list 2 pool MYNATPOOL
+R1(config)# interface range F0/0 - 1
+R1(config-if)# ip nat inside
+R1(config-if)# inteface F1/0
+R1(config-if)# ip nat outside
+R1(config-if)# end
+R1# clear ip nat translation *
+R1# configure terminal
+R1(config)# ip nat inside sorce list 2 pool MYNATPOOL overload
+R1(config)# access-list 2 permit 10.0.0.0 0.255.255.255
+R1(config)# access-list 2 permit 192.168.0.0 0.0.255.255
+R1(config)# ip nat inside source list 2 pool MYNATPOOL
+R1(config)# interface range F0/0 - 1
+R1(config-if)# ip nat inside
+R1(config-if)# inteface F1/0
+R1(config-if)# ip nat outside
+R1(config-if)# end
+R1# write
+
+
+____________________________________SWL3C1____________________________________
+
+-- configurar IPv4 das VLANs
+SWL3C1# vlan database
+SWL3C1(vlan)# vlan 10
+SWL3C1(vlan)# vlan 15
+SWL3C1(vlan)# vlan 20
+SWL3C1(vlan)# vlan 25
+SWL3C1(vlan)# vlan 30
+SWL3C1(vlan)# vlan 35
+SWL3C1(vlan)# exit
+SWL3C1# configure terminal
+SWL3C1(config)# interface vlan 10
+SWL3C1(config-if)# ip address 10.147.1.1 255.255.255.0
+SWL3C1(config-if)# ip address 200.164.177.65 255.255.255.192 secondary 
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# exit
+SWL3C1(config)# interface vlan 15
+SWL3C1(config-if)# ip address 10.147.2.1 255.255.255.0
+SWL3C1(config-if)# ip address 200.164.177.1 255.255.255.192 secondary 
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# exit
+SWL3C1(config)# interface vlan 20
+SWL3C1(config-if)# ip address 10.147.3.1 255.255.255.0
+SWL3C1(config-if)# ip address 200.164.177.129 255.255.255.192 secondary
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# exit
+SWL3C1(config)# interface vlan 25
+SWL3C1(config-if)# ip address 10.147.4.1 255.255.255.0
+SWL3C1(config-if)# ip address 200.164.177.209 255.255.255.240 secondary
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# exit
+SWL3C1(config)# interface vlan 30
+SWL3C1(config-if)# ip address 10.147.5.1 255.255.255.0
+SWL3C1(config-if)# ip address 200.164.177.225 255.255.255.240 secondary
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# exit
+SWL3C1(config)# interface vlan 35
+SWL3C1(config-if)# ip address 10.147.6.1 255.255.255.0
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# exit
+SWL3C1# write
+SWL3C1# show ip interface brief
+
+-- configurar IPv4
+SWL3C1# configure terminal
+SWL3C1(config)# interface F1/0
+SWL3C1(config-if)# ip address 10.147.7.1 255.255.255.252 
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# interface F1/1
+SWL3C1(config-if)# ip address 10.147.7.9 255.255.255.252 
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# end
+SWL3C1# write
+SWL3C1# show ip interface brief
+
+-- configurar IPv6 das interfaces
+SWL3C1# configure terminal
+SWL3C1(config)# ipv6 unicast-routing
+SWL3C1(config)# interface range F1/0 - 1
+SWL3C1(config-if-range)# no switchport
+SWL3C1(config-if-range)# no shutdown
+SWL3C1(config-if-range)# interface F1/1
+SWL3C1(config-if)# ipv6 address 2001:20:0:36::9/126
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# interface F1/0
+SWL3C1(config-if)# ipv6 address 2001:20:0:36::1/126
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# end
+SWL3C1# write
+
+-- configurar IPv6 das VLANs
+SWL3C1# configure terminal
+SWL3C1(config)# interface vlan10
+SWL3C1(config-if)# ipv6 address 2001:20:0:10::1/64
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# interface vlan15
+SWL3C1(config-if)# ipv6 address 2001:20:0:15::1/64
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# interface vlan20
+SWL3C1(config-if)# ipv6 address 2001:20:0:20::1/64
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# interface vlan25
+SWL3C1(config-if)# ipv6 address 2001:20:0:25::1/64
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# interface vlan30
+SWL3C1(config-if)# ipv6 address 2001:20:0:30::1/64
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# interface vlan35
+SWL3C1(config-if)# ipv6 address 2001:20:0:35::2/64
+SWL3C1(config-if)# no shutdown
+SWL3C1(config-if)# redi
+SWL3C1(config-if)# end
+SWL3C1# write
+
+-- configurar RIPv2
+SWL3C1# configure terminal
+SWL3C1(config)# ip routing
+SWL3C1(config)# router rip
+SWL3C1(config-router)# version 2
+SWL3C1(config-router)# network 10.147.0.0
+SWL3C1(config-router)# network 10.0.0.0
+SWL3C1(config-router)# network 200.164.177.0
+SWL3C1(config-router)# redistribute static
+SWL3C1(config-router)# end
+
+-- configurar RIPng
+SWL3C1# configure terminal
+SWL3C1(config)# ipv6 unicast-routing
+SWL3C1(config)# int range F1/0 - 1
+SWL3C1(config-if-range)# ipv6 rip proc1 enable
+SWL3C1(config-if-range)# end
+SWL3C1# configure terminal
+SWL3C1(config)# ipv6 router rip proc1
+SWL3C1(config-rtr)# redistribute connected
+SWL3C1(config-rtr)# end
+
+-- configurar ligações 
+SWL3C1# configure terminal
+SWL3C1(config)# interface range F1/4 - 5
+SWL3C1(config)# switchport mode trunk
+SWL3C1(config)# switchport trunk allowed vlan 1-2,10,15,20,25,30,35,1002-1005
+SWL3C1(config)# interface F1/2
+SWL3C1(config)# switchport access vlan 10
+SWL3C1(config)# interface F1/6
+SWL3C1(config)# switchport access vlan 10
+SWL3C1(config)# interface F1/3
+SWL3C1(config)# switchport access vlan 15
+SWL3C1(config)# interface F1/7
+SWL3C1(config)# switchport access vlan 15
+SWL3C1(config)# interface F1/8
+SWL3C1(config)# switchport access vlan 15
+SWL3C1(config)# end
+
+-- configurar DHCP (vlan 10 - DMZ)
+SWL3C1# configure terminal
+SWL3C1(config)# ip dhcp excluded-address 10.147.1.1 10.147.1.20
+SWL3C1(config)# ip dhcp excluded-address 10.147.1.250 10.147.1.254
+SWL3C1(config)# ip dhcp pool 1
+SWL3C1(dhcp-config)# network 10.147.1.0 255.255.255.0
+SWL3C1(dhcp-config)# default-router 10.147.1.1
+SWL3C1# configure terminal
+SWL3C1(config)# service dhcp
+SWL3C1(config)# end
+SWL3C1# write
+
+-- configurar IPv4 das VLANs
+SWL3C2# vlan database   
+SWL3C2(vlan)# vlan 20
+SWL3C2(vlan)# vlan 25
+SWL3C2(vlan)# vlan 30
+SWL3C2(vlan)# vlan 35
+SWL3C2(vlan)# exit
+SWL3C2# configure terminal
+SWL3C2(config)# interface vlan 20                         
+SWL3C2(config-if)# ip address 10.147.3.2 255.255.255.0
+SWL3C2(config-if)# ip address 200.164.177.130 255.255.255.192 secondary
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# exit
+SWL3C2(config)# interface vlan 25
+SWL3C2(config-if)# ip address 10.147.4.2 255.255.255.0
+SWL3C2(config-if)# ip address 200.164.177.210 255.255.255.240 secondary
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# exit
+SWL3C2(config)# interface vlan 30
+SWL3C2(config-if)# ip address 10.147.5.2 255.255.255.0
+SWL3C2(config-if)# ip address 200.164.177.226 255.255.255.240 secondary
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# exit
+SWL3C2(config)# interface vlan 35
+SWL3C2(config-if)# ip address 10.147.6.2 255.255.255.0
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# exit
+SWL3C2# write
+SWL3C2# show ip interface brief
+
+-- configurar IPv4 private
+SWL3C2# configure terminal
+SWL3C2(config)# interface F1/0
+SWL3C2(config-if)# ip address 10.147.7.5 255.255.255.252 
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# interface F1/1
+SWL3C2(config-if)# ip address 10.147.7.10 255.255.255.252 
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# interface F1/2
+SWL3C2(config-if)# ip address 10.147.7.13 255.255.255.252 
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# end
+SWL3C2# write
+SWL3C2# show ip interface brief
+
+-- configurar IPv6 das interfaces
+SWL3C2# configure terminal
+SWL3C2(config)# ipv6 unicast-routing
+SWL3C2(config)# interface range F1/0 - 2
+SWL3C2(config-if-range)# no switchport
+SWL3C2(config-if-range)# interface F1/0
+SWL3C2(config-if)# ipv6 address 2001:20:0:36::5/126
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if-range)# interface F1/1
+SWL3C2(config-if)# ipv6 address 2001:20:0:36::a/126
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# interface F1/2
+SWL3C2(config-if)# ipv6 address 2001:20:0:36::d/126
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# end
+SWL3C2# write
+
+-- configurar IPv6 das VLANs
+SWL3C2# configure terminal
+SWL3C2(config)# interface vlan20
+SWL3C2(config-if)# ipv6 address 2001:20:0:20::2/64
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# interface vlan25
+SWL3C2(config-if)# ipv6 address 2001:20:0:25::2/64
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# interface vlan30
+SWL3C2(config-if)# ipv6 address 2001:20:0:30::2/64
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# interface vlan35
+SWL3C2(config-if)# ipv6 address 2001:20:0:35::2/64
+SWL3C2(config-if)# no shutdown
+SWL3C2(config-if)# redi
+SWL3C2(config-if)# end
+SWL3C2# write
+
+-- configurar RIPv2
+SWL3C2# configure terminal
+SWL3C2(config)# ip routing
+SWL3C2(config)# ip route 192.168.0.0 255.255.254.0 10.147.7.14
+SWL3C2(config)# router rip
+SWL3C2(config-router)# version 2
+SWL3C2(config-router)# network 10.147.0.0
+SWL3C2(config-router)# network 10.0.0.0
+SWL3C2(config-router)# network 192.168.0.0
+SWL3C2(config-router)# redistribute static
+SWL3C2(config-router)# end
+
+-- configurar RIPng
+SWL3C2# configure terminal
+SWL3C2(config)# ipv6 unicast-routing
+SWL3C2(config)# int range F1/0 - 1
+SWL3C2(config-if-range)# ipv6 rip proc1 enable
+SWL3C2(config-if-range)# end
+SWL3C2# configure terminal
+SWL3C2(config)# ipv6 router rip proc1
+SWL3C2(config-rtr)# redistribute connected
+SWL3C2(config-rtr)# end
+
+-- configurar ligações trunk
+SWL3C2# configure terminal
+SWL3C2(config)# interface F1/3
+SWL3C2(config)# switchport mode trunk
+SWL3C2(config)# switchport trunk allowed vlan 1-2,10,15,20,25,30,35,1002-1005
+SWL3C2(config)# interface F1/4
+SWL3C2(config)# switchport mode trunk
+SWL3C2(config)# switchport trunk allowed vlan 1-2,10,15,20,25,30,35,1002-1005
+SWL3C2(config)# end
+
+
+____________________________________SWL3F1____________________________________
+
+-- configurar Portas Trunk
+SWL3F1# vlan database   
+SWL3F1(vlan)# vlan 10
+SWL3F1(vlan)# vlan 15
+SWL3F1(vlan)# vlan 20
+SWL3F1(vlan)# vlan 25
+SWL3F1(vlan)# vlan 30
+SWL3F1(vlan)# vlan 35
+SWL3F1(vlan)# exit
+SWL3F1# configure terminal
+SWL3F1(config)# interface F1/0
+SWL3F1(config-if)# switchport mode trunk
+SWL3F1(config-if)# no shutdown
+SWL3F1(config-if)# exit
+SWL3F1(config)# interface F1/1
+SWL3F1(config-if)# switchport mode trunk
+SWL3F1(config-if)# no shutdown
+SWL3F1(config-if)# exit
+SWL3F1(config)# interface F1/2
+SWL3F1(config-if)# switchport mode trunk
+SWL3F1(config-if)# no shutdown
+SWL3F1(config-if)# exit
+SWL3F1(config)# interface F1/3
+SWL3F1(config-if)# switchport mode trunk
+SWL3F1(config-if)# no shutdown
+SWL3F1(config-if)# end
+SWL3F1# write
+SWL3F1# show ip interface brief
+
+-- configurar ligações trunk
+SWL3F1# configure terminal
+SWL3F1(config)# interface F1/1 - 2
+SWL3F1(config)# switchport mode trunk
+SWL3F1(config)# switchport trunk allowed vlan 1-2,20,25,30,35,1002-1005
+SWL3F1(config)# interface F1/3
+SWL3F1(config)# switchport mode trunk
+SWL3F1(config)# switchport trunk allowed vlan 1-2,10,15,20,25,30,35,1002-1005
+SWL3F1(config)# interface F1/0
+SWL3F1(config)# switchport mode trunk
+SWL3F1(config)# switchport trunk allowed vlan 1-2,10,15,20,25,30,35,1002-1005
+SWL3F1(config)# end
+
+____________________________________SWL3F2____________________________________
+
+-- configurar Portas Trunk
+SWL3F2# vlan database   
+SWL3F2(vlan)# vlan 10
+SWL3F2(vlan)# vlan 15
+SWL3F2(vlan)# vlan 20
+SWL3F2(vlan)# vlan 25
+SWL3F2(vlan)# vlan 30
+SWL3F2(vlan)# vlan 35
+SWL3F2(vlan)# exit
+SWL3F2# configure terminal
+SWL3F2(config)# interface F1/0
+SWL3F2(config-if)# switchport mode trunk
+SWL3F2(config-if)# no shutdown
+SWL3F2(config-if)# exit
+SWL3F2(config)# interface F1/1
+SWL3F2(config-if)# switchport mode trunk
+SWL3F2(config-if)# no shutdown
+SWL3F2(config-if)# exit
+SWL3F2(config)# interface F1/2
+SWL3F2(config-if)# switchport mode trunk
+SWL3F2(config-if)# no shutdown
+SWL3F2(config-if)# exit
+SWL3F2(config)# interface F1/3
+SWL3F2(config-if)# switchport mode trunk
+SWL3F2(config-if)# no shutdown
+SWL3F2(config-if)# end
+SWL3F2# write
+SWL3F2# show ip interface brief
+
+-- configurar ligações trunk
+SWL3F2# configure terminal
+SWL3F2(config)# interface F1/0
+SWL3F2(config)# switchport mode trunk
+SWL3F2(config)# switchport trunk allowed vlan 1-2,10,15,20,25,30,35,1002-1005
+SWL3F2(config)# interface F1/1 - 2
+SWL3F2(config)# switchport mode trunk
+SWL3F2(config)# switchport trunk allowed vlan 1-2,20,25,30,35,1002-1005
+SWL3F2(config)# interface F1/3
+SWL3F2(config)# switchport mode trunk
+SWL3F2(config)# switchport trunk allowed vlan 1-2,10,15,20,25,30,35,1002-1005
+SWL3F2(config)# end  
+
+
+______________________________________DMZ_____________________________________ (vlan 10)
+
+-- configurar IPv4
+DMZ> ip 10.147.1.2/24 10.147.1.1
+DMZ> show ip
+DMZ> save
+
+-- configurar IPv6
+DMZ> ip 2001:20:0:10::2/64 2001:20:0:10::1
+DMZ> show ipv6
+DMZ> save
+
+
+___________________________________DMZPublic__________________________________ (vlan 10)
+
+-- configurar IPv4 Público
+DMZPublic> ip 200.164.177.2/26 200.164.177.1 
+DMZPublic> show ip
+DMZPublic> save
+
+
+__________________________________Datacenter__________________________________ (vlan 15)
+
+-- configurar IPv4
+Datacenter> ip 10.147.2.2/24 10.147.2.1            
+Datacenter> show ip
+Datacenter> save
+
+-- configurar IPv6
+Datacenter> ip 2001:20:0:15::2/64   
+Datacenter> show ipv6
+Datacenter> save
+
+-- máquina virtual
+> ifconfig eth0 up
+> ifconfig eth0 10.147.2.3/24
+> route add default fw 10.147.2.1 dev eth0
+> route
+> ping 100.0.0.2
+
+
+_______________________________DatacenterPublic_______________________________ (vlan 15)
+
+-- configurar IPv4 Público
+DatacenterPublic> ip 200.164.177.66/26 200.164.177.65            
+DatacenterPublic> show ip
+DatacenterPublic> save
+
+
+___________________________________Marketing__________________________________ (vlan 20)
+
+-- configurar IPv4
+Marketing> ip 10.147.3.3/24 10.147.3.1
+Marketing> show ip
+Marketing> save
+
+-- configurar IPv6
+Marketing> ip 2001:20:0:20::3/64
+Marketing> show ipv6
+Marketing> save
+
+
+__________________________________MarkPublic__________________________________ (vlan 20)
+
+-- configurar IPv4 Público
+MarketingPublic> ip 200.164.177.131/26 200.164.177.129
+MarketingPublic> show ip
+MarketingPublic> save
+
+
+_____________________________________Admin____________________________________ (vlan 25)
+
+-- configurar IPv4
+Admin> ip 10.147.4.3/24 10.147.4.1
+Admin> show ip
+Admin> save
+
+-- configurar IPv6
+Admin> ip 2001:20:0:25::3/64
+Admin> show ipv6
+Admin> save
+
+
+__________________________________AdminPublic_________________________________ (vlan 25)
+
+-- configurar IPv4 Público
+AdminPublic> ip 200.164.177.211/28 200.164.177.209
+AdminPublic> show ip
+AdminPublic> save
+
+
+____________________________________Design____________________________________ (vlan 30)
+
+-- configurar IPv4
+Design> ip 10.147.5.3/24 10.147.5.1
+Design> show ip
+Design> save
+
+-- configurar IPv6
+Design> ip 2001:20:0:30::3/64
+Design> show ipv6
+Design> save
+
+
+_________________________________DesignPublic_________________________________ (vlan 30)
+
+-- configurar IPv4 Público
+DesignPublic> ip 200.164.177.227/29 200.164.177.225
+DesignPublic> show ip
+DesignPublic> save
+
+
+___________________________________Research___________________________________ (vlan 35)
+
+-- configurar IPv4
+Research> ip 10.147.6.3/24 10.147.6.1
+Research> show ip
+Research> save
+
+-- configurar IPv6
+Research> ip 2001:20:0:35::3/64
+Research> show ipv6
+Research> save
+
+
+__________________________________OldBuilding_________________________________
+
+-- configurar IPv4
+Internet> ip 192.168.0.2/23 192.168.0.1
+Internet> show ip
+Internet> save
+
+
+________________________________Ethernetswitch-1______________________________
+
+-- configurar ethernets
+| Port | VLAN |  Type  |
+|   0  |   1  | access |
+|   1  |  25  | access |
+|   2  |   1  | dot1q  |
+|   3  |  20  | access |
+
+
+________________________________Ethernetswitch-2______________________________
+
+-- configurar ethernets
+| Port | VLAN |  Type  |
+|   0  |   1  | access |
+|   1  |  25  | access |
+|   2  |   1  | dot1q  |
+|   3  |  20  | access |
+
+
+________________________________Ethernetswitch-3______________________________
+
+-- configurar ethernets
+| Port | VLAN |  Type  |
+|   0  |  20  | access |
+|   1  |   1  | access |
+|   2  |   1  | dot1q  |
+|   3  |  25  | access |
+
+
+________________________________Ethernetswitch-4______________________________
+
+-- configurar ethernets
+| Port | VLAN |  Type  |
+|   0  |  20  | access |
+|   1  |   1  | access |
+|   2  |   1  | dot1q  |
+|   3  |  25  | access |
+
+
+
+------------------------------------- DNS ------------------------------------
+
+root@labcom: ifconfig 10.147.2.10
+root@labcom:/home/labcom# bind
+root@labcom:/home/labcom# service bind9 statushistory
+root@labcom:/home/labcom# vim /etc/bind
+root@labcom:/home/labcom# vim /etc/bind/named.conf
+root@labcom:/home/labcom# vim /etc/bind/named.conf.local
+root@labcom:/home/labcom# vim /etc/bind/named.conf.default-zones
+root@labcom:/home/labcom# vim /etc/bind/named.conf.local
+root@labcom:/home/labcom# vim /etc/bind/zones.rfc1918
+root@labcom:/home/labcom# vim /etc/bind/named.conf.local
+root@labcom:/home/labcom# vim /etc/bind/frzone.pt.db
+root@labcom:/home/labcom# service bind9 restart
+root@labcom:/home/labcom# service bind9 status
+root@labcom:/home/labcom# cd /etc/bind
+root@labcom:/etc/bind# cat db.root
+root@labcom:/etc/bind# cp db.local frzoe.pt.db
+root@labcom:/etc/bind# service bind9 restart
+root@labcom:/etc/bind# service bind9 status
+root@labcom:/etc/bind# ola.frzone.pt 127.0.0.1
+root@labcom:/etc/bind# service apache2 status
+root@labcom:/etc/bind# wget 127.0.0.1
+root@labcom:/etc/bind# cat index.html
+
+FRZONE.PT.DB
+;
+; BIND data file for frzone.pt
+;
+$TTL    604800
+@       IN      SOA     ns1.frzone.pt. root.frzone.pt. (
+                              2         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800)        ; Negative Cache TTL
+;
+frzone.pt.      IN      NS      ns1.frzone.pt.
+ns1     IN      A       10.147.2.3
+frzone  IN      A       10.147.2.3
+ola     IN      A       10.147.2.3
+test    IN      A       10.147.2.3
+
+
+> nano /etc/resolv.conf (alterar ip)
+> service bind9 restart
+> nslookup ola.frzone.pt
+> nslookup test.frzone.pt
+
